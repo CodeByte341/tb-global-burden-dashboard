@@ -251,12 +251,24 @@ st.markdown(
 
 st.markdown(
 """
-**Context.** Tuberculosis (TB) is an infectious disease caused by *Mycobacterium tuberculosis*. It predominantly affects the lungs and spreads through airborne transmission. Untreated cases may be fatal.  
-**Detection and treatment.** Diagnosis combines clinical assessment and microbiological confirmation (sputum microscopy, rapid molecular tests, culture where available) together with radiography when indicated. Treatment relies on standardized multi-drug regimens for drug-susceptible TB, and longer specialized regimens for drug-resistant TB. Early case-finding and treatment completion are essential to reduce transmission and deaths.
+**Context.** Tuberculosis (TB) is an infectious disease caused by *Mycobacterium tuberculosis*. It mainly affects the lungs, spreads via airborne droplets, and can be fatal without timely treatment.
 
-**How to read this dashboard.** Use the controls to:
-- Explore the **world bubble map**: bubble **size** equals the selected metric (absolute counts or per-100k), bubble **color** encodes the **Region**.
-- Switch between **Global view** and **Country zoom**. Both views include **cumulative deaths**.
+**Detection and treatment.** Diagnosis combines clinical assessment with microbiological confirmation (sputum smear microscopy, rapid molecular tests such as Xpert, and culture where available), complemented by chest radiography when indicated. Standard multi-drug regimens cure drug-susceptible TB; drug-resistant TB requires longer, specialized treatment. Early case-finding and full treatment completion are essential to reduce transmission and deaths.
+
+**What each metric means (and when to use absolute vs per-100k):**
+- **Incidence**: the number of **new and relapse TB cases** occurring in a year.  
+  • *Absolute* shows the **total workload** for health systems.  
+  • *Per-100k* normalizes by population, enabling **fair comparisons** between countries of different sizes.
+- **Deaths**: the **number of people who died** from TB during the year (as reported in the dataset).  
+  • *Absolute* reflects the **total fatal toll**.  
+  • *Per-100k* highlights **mortality risk** relative to population size.
+- **Prevalence**: the **total number of people living with active TB disease** during the year.  
+  • *Absolute* indicates the **clinical caseload** at a point or period in time.  
+  • *Per-100k* helps compare **disease burden intensity** across populations.
+
+**How to use this dashboard.**  
+- Explore the **world bubble map**: bubble **size** equals the selected metric (absolute counts or per-100k); bubble **color** encodes **Region**.  
+- Switch between **Global view** and **Country zoom**. Both views include **cumulative deaths** to track the long-term fatal burden.
 """
 )
 
@@ -437,60 +449,24 @@ else:
 # AUTOMATED SYNTHESIS — Which regions are most affected?
 # =========================================================
 st.markdown("---")
-st.markdown("### Analytical synthesis: where is the burden highest, and how is it changing?")
-
-def regional_summary(df_in, metric_abs_col, metric_name):
-    """Return ranking and shares by region for earliest and latest year."""
-    d = df_in.dropna(subset=[COL["year"], "region_key", metric_abs_col]).copy()
-    early, late = int(d[COL["year"]].min()), int(d[COL["year"]].max())
-
-    def agg_year(y):
-        g = (d[d[COL["year"]]==y]
-             .groupby("region_key")[metric_abs_col].sum()
-             .reset_index()
-             .sort_values(metric_abs_col, ascending=False))
-        total = g[metric_abs_col].sum()
-        g["share"] = g[metric_abs_col] / total * 100 if total > 0 else 0
-        return g, total
-
-    g_early, tot_early = agg_year(early)
-    g_late, tot_late   = agg_year(late)
-
-    # Top regions by late year
-    top_late = g_late.head(3).copy()
-    top_late["RegionFull"] = top_late["region_key"].map(REGION_FULL).fillna(top_late["region_key"])
-
-    # Variation of shares for these top late regions since early year
-    merged = top_late.merge(
-        g_early[["region_key","share"]].rename(columns={"share":"share_early"}),
-        on="region_key", how="left"
-    ).fillna({"share_early":0})
-    merged["delta_share"] = merged["share"] - merged["share_early"]
-
-    # Text blocks
-    lines = []
-    lines.append(f"• **{metric_name} — {late}**: total = **{fmt_int(tot_late)}**.")
-    for _, r in merged.iterrows():
-        lines.append(
-            f"  – {r['RegionFull']}: **{r['share']:.1f}%** of {metric_name} "
-            f"(change vs {early}: {'+' if r['delta_share']>=0 else ''}{r['delta_share']:.1f} pp)."
-        )
-    return early, late, "\n".join(lines)
-
-e1, l1, txt1 = regional_summary(df, COL["inc_abs"], "Incidence (absolute)")
-e2, l2, txt2 = regional_summary(df, COL["deaths_abs"], "Deaths (absolute)")
-e3, l3, txt3 = regional_summary(df, COL["prev_abs"], "Prevalence (absolute)")
+st.markdown("### Overall synthesis")
 
 st.markdown(
-    f"""
-**Key messages.**  
-{txt1}  
-{txt2}  
-{txt3}  
+"""
+**Where the burden concentrates.** In most years of global reporting, a **large share of the absolute TB burden** is concentrated in a limited number of countries across **South-East Asia** and parts of **Africa**, with comparatively **lower levels** observed in much of **Europe** and the **Americas**. This pattern reflects both **population size** and **underlying epidemiology**.
 
-Overall, regions with the largest absolute incidence also concentrate the majority of deaths, although the relative shares can shift over time. 
-Observed changes reflect both epidemiological dynamics and population growth. Interventions that consistently improve early diagnosis and treatment completion
-are associated with faster reductions in incidence and mortality.
+**Absolute vs per-100k perspectives.** Countries with very large populations can dominate **absolute** incidence and deaths even when their **per-100k** rates are moderate. Conversely, smaller countries may exhibit high **per-100k** rates without contributing as much to the global **absolute** totals. Using both lenses together prevents misleading conclusions.
+
+**Why some places are less affected.** Lower TB burden typically aligns with a combination of factors:  
+- **Earlier detection** and rapid **access to effective diagnostics** (including molecular tests),  
+- Strong **treatment programs** with high completion rates and patient support,  
+- **Socio-economic conditions** that reduce transmission risk (housing, nutrition, working conditions),  
+- Robust **primary care** and **infection-control** standards, and  
+- Childhood **BCG vaccination**, which helps protect against severe forms in children, even though it offers **limited protection** against pulmonary TB in adults.
+
+**Why some places remain highly affected.** Persistent burden is often associated with **delayed diagnosis**, **treatment interruptions**, **health-system constraints**, **poverty and crowding**, **co-morbidities** (including HIV and diabetes), and the presence of **drug-resistant TB**. These drivers can sustain transmission and increase mortality despite progress elsewhere.
+
+**Programmatic implication.** Sustainable gains come from pairing **population-level prevention** and **social protection** with **high-quality case-finding** and **treatment completion**. Monitoring **absolute counts** guides planning and logistics, while **per-100k** indicators support benchmarking, prioritization, and evaluation of equitable progress across regions and countries.
 """
 )
 
