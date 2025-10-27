@@ -10,7 +10,7 @@ from vega_datasets import data as vega_data
 # =========================================================
 # PAGE CONFIG
 # =========================================================
-st.set_page_config(page_title="Global TB Burden — Interactive Data Story", layout="wide")
+st.set_page_config(page_title="Global Tuberculosis Burden — Interactive Data Story", layout="wide")
 alt.themes.enable("opaque")
 
 PALETTE = {
@@ -19,7 +19,7 @@ PALETTE = {
     "prev": "#F39C12",
     "neutral": "#7F8C8D",
 }
-# WHO region categorical palette
+# Region color palette (legend label = "Region")
 REGION_COLORS = {
     "AFR": "#9B59B6",  # Africa
     "AMR": "#27AE60",  # Americas
@@ -30,7 +30,7 @@ REGION_COLORS = {
 }
 
 # =========================================================
-# CSV COLUMN MAP (exact names, we never rewrite the file)
+# CSV COLUMN MAP (exact names, file never modified)
 # =========================================================
 COL = {
     "country": "Country or territory name",
@@ -39,7 +39,7 @@ COL = {
     "year": "Year",
     "pop": "Estimated total population number",
 
-    # Absolute quantities (used throughout)
+    # Absolute quantities
     "prev_abs":   "Estimated prevalence of TB (all forms)",
     "prev_abs_lo":"Estimated prevalence of TB (all forms), low bound",
     "prev_abs_hi":"Estimated prevalence of TB (all forms), high bound",
@@ -57,7 +57,7 @@ COL = {
     "mort_100k": "Estimated mortality of TB cases (all forms, excluding HIV) per 100 000 population",
     "inc_100k":  "Estimated incidence (all forms) per 100 000 population",
 
-    # Case detection
+    # We keep case detection in data for tiles, but not on the map
     "cdr_pct": "Case detection rate (all forms), percent",
 }
 
@@ -116,11 +116,11 @@ COUNTRY_CENTROIDS = {
     "Turkey":(39.06,35.18),
     # Africa
     "Morocco":(31.79,-7.09), "Algeria":(28.04,2.96), "Tunisia":(33.89,9.40),
-    "Libya":(27.04,18.01), "Egypt":(26.49,29.87), "Mauritania":(20.26,-10.97),
-    "Mali":(17.57,-3.99), "Senegal":(14.36,-14.47), "Gambia":(13.45,-15.38),
-    "Guinea-Bissau":(12.05,-14.67), "Guinea":(10.44,-9.31), "Sierra Leone":(8.56,-11.78),
-    "Liberia":(6.45,-9.31), "Ivory Coast":(7.64,-5.55), "Ghana":(7.96,-1.02),
-    "Togo":(8.53,0.82), "Benin":(9.32,2.31), "Burkina Faso":(12.24,-1.56),
+    "Libya":(27.04,18.01), "Egypt":(26.49,29.87),
+    "Mauritania":(20.26,-10.97), "Mali":(17.57,-3.99), "Senegal":(14.36,-14.47),
+    "Gambia":(13.45,-15.38), "Guinea-Bissau":(12.05,-14.67), "Guinea":(10.44,-9.31),
+    "Sierra Leone":(8.56,-11.78), "Liberia":(6.45,-9.31), "Ivory Coast":(7.64,-5.55),
+    "Ghana":(7.96,-1.02), "Togo":(8.53,0.82), "Benin":(9.32,2.31), "Burkina Faso":(12.24,-1.56),
     "Niger":(17.61,8.08), "Nigeria":(9.08,8.68), "Cameroon":(5.69,12.74), "Chad":(15.36,18.66),
     "Central African Republic":(6.61,20.94), "Republic of the Congo":(-0.66,15.56),
     "Democratic Republic of the Congo":(-2.88,23.66), "Gabon":(-0.59,11.79),
@@ -192,10 +192,9 @@ def load_data():
 
     # helpers
     df["country_norm"] = df[COL["country"]].apply(normalize_country_name)
-    df["region_code"] = df[COL["region"]].str.upper().str[:3]  # map to AFR/AMR/EMR/EUR/SEA/WPR if already coded
-    df["region_code"] = df["region_code"].replace({
-        "AFR":"AFR","AMR":"AMR","EMR":"EMR","EUR":"EUR","SEA":"SEA","WPR":"WPR"
-    })
+    # region key for coloring (AFR/AMR/… if dataset uses those codes)
+    df["region_key"] = df[COL["region"]].astype(str).str.upper().str[:3]
+    df["region_key"] = df["region_key"].where(df["region_key"].isin(REGION_COLORS.keys()), "Other")
 
     # cumulative deaths per country
     df = df.sort_values([COL["country"], COL["year"]]).copy()
@@ -204,9 +203,9 @@ def load_data():
     # global aggregates per year
     global_year = (
         df.groupby(COL["year"])
-          .agg(inc_abs=("Estimated number of incident cases (all forms)", "sum"),
-               deaths_abs=("Estimated number of deaths from TB (all forms, excluding HIV)", "sum"),
-               prev_abs=("Estimated prevalence of TB (all forms)", "sum"))
+          .agg(inc_abs=(COL["inc_abs"], "sum"),
+               deaths_abs=(COL["deaths_abs"], "sum"),
+               prev_abs=(COL["prev_abs"], "sum"))
           .reset_index()
           .rename(columns={COL["year"]:"year"})
     )
@@ -227,36 +226,51 @@ def fmt_int(x):
         return "NA"
 
 # =========================================================
-# HEADER — Context & narrative
+# PROFESSIONAL CONTEXT (EN)
 # =========================================================
 st.title("Global Tuberculosis Burden — Interactive Data Story")
 
 st.markdown(
 """
-### Why this analysis
-Tuberculosis remains one of the deadliest infectious diseases worldwide. The burden is **highly uneven**: a relatively small set of countries concentrates most incident cases and deaths.  
-This dashboard offers two complementary angles:
-- **Global view** to understand long-term trends and cumulative deaths.
-- **Country zoom** to explore a single country’s absolute counts over time.
+**Context.** Tuberculosis (TB) is an infectious disease caused by *Mycobacterium tuberculosis*, mostly affecting the lungs. 
+It spreads through the air, and untreated cases can be fatal. The World Health Organization (WHO) provides country estimates 
+for TB **incidence**, **deaths**, and **prevalence**.
 
-All figures exclude TB/HIV-specific split. Values come directly from WHO estimates.
+**How TB is detected and treated.** Diagnosis typically combines clinical evaluation with microbiological confirmation 
+(sputum microscopy, molecular testing such as Xpert MTB/RIF, culture where available), and chest imaging when indicated. 
+Treatment relies on standardized multi-drug regimens for drug-susceptible TB, and longer, specialized regimens for drug-resistant TB. 
+Early detection and treatment completion are essential to reduce transmission and mortality.
+
+**What this dashboard shows.** Use the controls to explore:
+- A **world bubble map** where bubble **size** represents the selected metric (absolute counts or per-100k) 
+  and bubble **color** encodes the **Region**.  
+- A **Global view** with yearly totals and **cumulative deaths**.  
+- A **Country zoom** to inspect a single country’s time series, with **cumulative deaths**.
+
+**Sources.** World Health Organization data: WHO Data Portal and the public data reference list.  
+Links: https://www.who.int/data/ and https://www.tableau.com/learn/articles/free-public-data-sets
 """
 )
 
-# view selector
+# =========================================================
+# VIEW SELECTOR
+# =========================================================
 view = st.selectbox("View", options=["Global view", "Country zoom"])
 
 # =========================================================
-# WORLD BUBBLE MAP (shared by both views)
+# MAP CONTROLS (Country dropdown appears inline in Country zoom)
 # =========================================================
-st.markdown("## World bubble map")
+if view == "Global view":
+    c1, c2, c3 = st.columns([2, 1.6, 1])
+else:
+    c1, c2, c3 = st.columns([2, 1.6, 1.6])
 
-c1, c2, c3 = st.columns([2, 1.2, 1.2])
 with c1:
     year_sel = st.slider("Year", int(min(YEARS)), int(max(YEARS)), value=LATEST, step=1)
+
 with c2:
     metric_choice = st.selectbox(
-        "Metric",
+        "Map metric",
         options=[
             "Incidence (absolute)",
             "Deaths (absolute)",
@@ -264,88 +278,88 @@ with c2:
             "Incidence per 100k",
             "Deaths per 100k",
             "Prevalence per 100k",
-            "Case detection rate (%)",
-        ]
+        ],
+        index=0
     )
+
 with c3:
-    st.caption("Bubble size reflects the selected metric. Bubble color indicates WHO region.")
+    if view == "Country zoom":
+        country_sel = st.selectbox("Country", options=sorted(df[COL["country"]].dropna().unique()))
+    else:
+        st.markdown(
+            "<div style='margin-top:28px;color:#7f8c8d'>Legend: size = metric, color = Region</div>",
+            unsafe_allow_html=True
+        )
 
-# link metric to column and scaling
+# Map metric mapping
 if metric_choice == "Incidence (absolute)":
-    m_col, label, color = COL["inc_abs"], "Incidence (absolute)", PALETTE["inc"]
+    m_col, label = COL["inc_abs"], "Incidence (absolute)"
 elif metric_choice == "Deaths (absolute)":
-    m_col, label, color = COL["deaths_abs"], "Deaths (absolute)", PALETTE["mort"]
+    m_col, label = COL["deaths_abs"], "Deaths (absolute)"
 elif metric_choice == "Prevalence (absolute)":
-    m_col, label, color = COL["prev_abs"], "Prevalence (absolute)", PALETTE["prev"]
+    m_col, label = COL["prev_abs"], "Prevalence (absolute)"
 elif metric_choice == "Incidence per 100k":
-    m_col, label, color = COL["inc_100k"], "Incidence per 100k", PALETTE["inc"]
+    m_col, label = COL["inc_100k"], "Incidence per 100k"
 elif metric_choice == "Deaths per 100k":
-    m_col, label, color = COL["mort_100k"], "Deaths per 100k", PALETTE["mort"]
-elif metric_choice == "Prevalence per 100k":
-    m_col, label, color = COL["prev_100k"], "Prevalence per 100k", PALETTE["prev"]
+    m_col, label = COL["mort_100k"], "Deaths per 100k"
 else:
-    m_col, label, color = COL["cdr_pct"], "Case detection rate (%)", "#8E44AD"
+    m_col, label = COL["prev_100k"], "Prevalence per 100k"
 
+# Data for the selected year
 show = df[df[COL["year"]] == year_sel].copy()
-# centroid lookup
 show["country_norm"] = show[COL["country"]].apply(normalize_country_name)
 show["lat"] = show["country_norm"].map(lambda x: COUNTRY_CENTROIDS.get(x, (np.nan, np.nan))[0])
 show["lon"] = show["country_norm"].map(lambda x: COUNTRY_CENTROIDS.get(x, (np.nan, np.nan))[1])
-show = show.dropna(subset=[m_col, "lat", "lon"])
+show = show.dropna(subset=[m_col, "lat", "lon"]).copy()
 
-# region color
-show["region_plot"] = show["region_code"].where(show["region_code"].isin(REGION_COLORS.keys()), "Other")
+# If country zoom, keep only the selected country on the map
+if view == "Country zoom":
+    show = show[show[COL["country"]] == country_sel]
 
-# size scaling
-if m_col == COL["cdr_pct"]:
-    size_scale = alt.Scale(domain=[0, 100], range=[30, 1500])
+# Region coloring
+region_domain = list(REGION_COLORS.keys())
+region_range = [REGION_COLORS[k] for k in region_domain]
+
+# Size scaling
+if show.empty:
+    q10, q99 = 1, 10
 else:
-    if show.empty:
-        q10, q99 = 1, 10
-    else:
-        q10 = np.nanpercentile(show[m_col], 10)
-        q99 = np.nanpercentile(show[m_col], 99)
-        if q10 == q99:
-            q10, q99 = 0, q99 if q99 > 0 else 1
-    size_scale = alt.Scale(domain=[q10, q99], range=[30, 1800])
+    q10 = np.nanpercentile(show[m_col], 10)
+    q99 = np.nanpercentile(show[m_col], 99)
+    if q10 == q99:
+        q10, q99 = 0, max(q99, 1)
+size_scale = alt.Scale(domain=[q10, q99], range=[30, 1800])
 
-# background
-base_map = alt.Chart(WORLD).mark_geoshape(
+# Background map
+base_map = alt.Chart(alt.topo_feature(vega_data.world_110m.url, "countries")).mark_geoshape(
     fill="#EEEEEE", stroke="white", strokeWidth=0.3
 ).project(type="equirectangular").properties(height=520)
 
-# bubbles
-bubbles = alt.Chart(show).mark_circle(opacity=0.75, stroke="white", strokeWidth=0.6).encode(
+# Bubbles
+bubbles = alt.Chart(show).mark_circle(opacity=0.8, stroke="white", strokeWidth=0.6).encode(
     longitude="lon:Q",
     latitude="lat:Q",
     size=alt.Size(f"{m_col}:Q", title=label, scale=size_scale),
-    color=alt.Color("region_plot:N",
-                    title="WHO Region",
-                    scale=alt.Scale(domain=list(REGION_COLORS.keys()),
-                                    range=[REGION_COLORS[k] for k in REGION_COLORS.keys()])),
+    color=alt.Color("region_key:N", title="Region", scale=alt.Scale(domain=region_domain, range=region_range)),
     tooltip=[
         alt.Tooltip(COL["country"], title="Country"),
-        alt.Tooltip("region_plot:N", title="WHO region"),
+        alt.Tooltip(COL["region"], title="Region"),
         alt.Tooltip(COL["pop"], title="Population", format=","),
-        alt.Tooltip(m_col, title=label, format=",.0f" if "absolute" in label or m_col==COL["cdr_pct"] else ".1f"),
+        alt.Tooltip(m_col, title=label, format=",.0f" if "absolute" in label else ".1f"),
         alt.Tooltip(COL["deaths_abs"], title="Deaths (absolute)", format=","),
         alt.Tooltip("cum_deaths_abs:Q", title="Cumulative deaths to year", format=",")
     ]
-).transform_calculate(
-    cum_deaths_abs=f"datum['{COL['deaths_abs']}']"  # replaced later when we filter; tooltip uses column name
 ).project(type="equirectangular").properties(height=520)
 
 st.altair_chart(base_map + bubbles, use_container_width=True)
 
 # =========================================================
-# VIEWS
+# VIEWS BELOW THE MAP
 # =========================================================
 if view == "Global view":
-    st.markdown("## Global time series and cumulative deaths")
-
-    # totals per year
+    st.markdown("### Global time series and cumulative deaths")
     gy = global_year.copy()
-    # lines
+
     lines_df = gy.melt("year", value_vars=["inc_abs","deaths_abs","prev_abs"],
                        var_name="Metric", value_name="Value").replace({
         "inc_abs":"Incidence (absolute)",
@@ -366,24 +380,23 @@ if view == "Global view":
         x=alt.X("year:O", title="Year"),
         y=alt.Y("cum_deaths_abs:Q", title="Cumulative deaths (absolute)"),
         tooltip=["year", alt.Tooltip("cum_deaths_abs:Q", format=",")]
-    ).properties(height=180)
+    ).properties(height=200)
 
     st.altair_chart(ts, use_container_width=True)
     st.altair_chart(cum, use_container_width=True)
 
     st.markdown(
         """
-**Reading notes.** Absolute incidence dominates prevalence, which is expected for a disease with long duration in many settings.  
-Cumulative deaths grow steadily across the full period, highlighting the persistent fatal burden.
+**Interpretation.** Annual incidence remains higher than annual deaths and prevalence, which aligns with TB’s 
+transmissible nature and long disease duration in some settings. Cumulative deaths increase steadily, emphasizing the 
+persistent fatal burden over time.
         """
     )
 
 else:
-    st.markdown("## Country zoom")
-    country = st.selectbox("Select a country", options=sorted(df[COL["country"]].dropna().unique()))
-    dpc = df[df[COL["country"]] == country].sort_values(COL["year"]).copy()
+    st.markdown("### Country time series and cumulative deaths")
+    dpc = df[df[COL["country"]] == country_sel].sort_values(COL["year"]).copy()
 
-    # time series of absolute counts
     long = dpc.rename(columns={
         COL["year"]:"Year",
         COL["inc_abs"]:"Incidence (absolute)",
@@ -403,7 +416,6 @@ else:
         tooltip=["Year","Metric", alt.Tooltip("Value:Q", format=",")]
     ).properties(height=340)
 
-    # cumulative deaths for this country
     dpc_cum = dpc[[COL["year"], COL["deaths_abs"]]].rename(columns={COL["year"]:"Year", COL["deaths_abs"]:"Deaths"})
     dpc_cum["Cumulative deaths"] = dpc_cum["Deaths"].cumsum()
 
@@ -425,20 +437,13 @@ else:
     cD.metric("Case detection rate (%)", f"{last[COL['cdr_pct']]:.0f}" if not pd.isna(last[COL["cdr_pct"]]) else "NA")
 
 # =========================================================
-# CONCLUSION & PREVENTION
+# FOOTER: Sources
 # =========================================================
 st.markdown("---")
 st.markdown(
 """
-### Key conclusions
-1. The TB burden is **highly concentrated** in a limited number of countries and WHO regions.  
-2. Despite progress in some places, **absolute deaths keep accumulating**, underscoring the long-term fatal burden.  
-3. **Case detection** varies widely. Countries with sustained improvements in detection typically achieve faster declines in incidence and deaths.
-
-### Public health implications and prevention
-- **Earlier detection and treatment** save lives and reduce transmission.  
-- **Stable financing** targeting high-burden settings is essential.  
-- **Integrated primary care** with TB screening, diagnostics, and patient support improves adherence and outcomes.  
-- **Social protection and stigma reduction** help patients complete treatment and return to care when needed.
+**Sources.** World Health Organization (WHO) data.  
+- WHO Data Portal: https://www.who.int/data/  
+- Public datasets list: https://www.tableau.com/learn/articles/free-public-data-sets
 """
 )
