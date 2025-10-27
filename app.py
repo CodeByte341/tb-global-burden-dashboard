@@ -446,26 +446,39 @@ else:
     cD.metric("Case detection rate (%)", f"{last[COL['cdr_pct']]:.0f}" if not pd.isna(last[COL["cdr_pct"]]) else "NA")
 
 # =========================================================
-# AUTOMATED SYNTHESIS — Which regions are most affected?
+# OVERALL SYNTHESIS — Regions most affected
 # =========================================================
 st.markdown("---")
 st.markdown("### Overall synthesis")
 
 st.markdown(
-f"""
-**Study window (1990–2013).** Within this period, the **highest absolute TB burden** concentrates in parts of **South-East Asia** and **Africa**, with comparatively lower levels across much of **Europe** and the **Americas**. This pattern reflects both **population size** and **underlying epidemiology**. Using **absolute** metrics highlights where the global workload and deaths are concentrated; using **per-100k** reveals where **risk intensity** is highest after adjusting for population.
+"""
+**Study window (1990–2013).** Throughout this period, the **highest absolute TB burden** is concentrated in **South-East Asia** and **Africa**, while generally lower levels are observed across **Europe** and the **Americas**.  
+Absolute indicators highlight how these regions carry the majority of the global workload and deaths. Per-100k indicators reveal **risk intensity** relative to population size.
 
-**Regional perspective, then and now.** The **WHO South-East Asia Region** bears **nearly half** of the global TB disease burden and, in recent reporting, accounted for **more than 45% of annual TB incidence**, with **> 4.8 million people** falling ill and **> 600 000 deaths (HIV-negative)** in **2022** alone, which is **more than half of global TB deaths**. This underscores why large shares of the global burden appear in South-East Asia even when country-specific per-100k rates vary. :contentReference[oaicite:0]{index=0}
+**Regional perspective, then and now.** The WHO South-East Asia Region continues to carry the **largest share of the global TB burden**, accounting in recent reporting for **over 45% of global TB incidence** and **more than half of global TB deaths**. Countries in this region include several of the world’s most populous nations, which amplifies the absolute number of cases and deaths.
 
-In the **WHO African Region**, the **fatal toll remains substantial**. WHO notes that **over 33% of TB deaths** occur in the African Region, reflecting persistent challenges in timely diagnosis, treatment completion, and the intersection with comorbidities and socio-economic determinants. :contentReference[oaicite:1]{index=1}
+The WHO African Region remains heavily affected, representing **more than one-third of global TB deaths** in recent years. This reflects complex challenges including **late diagnosis**, **higher vulnerability due to co-morbidities**, **poverty-related exposure**, and **health-system constraints** that limit sustained treatment success.
 
-**Current situation (outside the 1990–2013 study window).** According to the latest WHO fact sheet, **an estimated 10.8 million** people fell ill with TB and **1.25 million** died in **2023** (including **161 000** among people with HIV). TB has likely returned to being the **top cause of death from a single infectious agent** after COVID-19 dominated during the previous three years. These figures confirm that, despite progress, TB remains a leading global killer requiring sustained investment. :contentReference[oaicite:2]{index=2}
+**Current situation (beyond the 1990–2013 study window).**  
+WHO estimates show that **10.8 million people** fell ill with TB and **1.25 million people** died from TB in **2023**. TB has once again become the **leading cause of death from a single infectious agent**, after COVID-19 dominated mortality patterns during the pandemic.  
+These data confirm that TB **remains a global health emergency** requiring persistent investment and innovation.
 
-**Why some places are less affected.** Lower burden often aligns with **earlier detection** (rapid molecular tests), **high treatment completion**, **infection-control standards**, **robust primary care**, improved **living and working conditions**, and **childhood BCG vaccination** that protects against severe forms in children, while offering limited protection against adult pulmonary TB. :contentReference[oaicite:3]{index=3}
+**Why some settings have lower burden.**  
+Countries with lower TB burden typically benefit from:  
+• **Rapid access to diagnosis**, including molecular testing  
+• **High treatment completion** supported by continuity of care  
+• **Strong primary health systems** and infection-control practices  
+• **Improved living and working conditions** reducing transmission  
+• **BCG vaccination** in childhood, which protects against severe forms in children
 
-**Programmatic implication.** For policy and planning, track **absolute counts** to size resources and logistics, and use **per-100k rates** to **benchmark** performance and equity across populations. Enduring gains require sustained financing for **case-finding, rapid diagnostics, effective treatment (including for drug-resistant TB), social protection**, and strong primary care to prevent diagnostic delay and treatment interruption.
+**Policy implications.**  
+Tracking **absolute counts** is essential for planning and resource allocation.  
+Monitoring **per-100k rates** supports **equity**, **benchmarking**, and **priority-setting**.  
+Sustained progress demands strengthened **case-finding**, **drug-resistance management**, **social protection**, and **long-term investment** in primary care.
 """
 )
+
 
 # =========================================================
 # SOURCES (single location)
