@@ -8,13 +8,30 @@ import altair as alt
 from vega_datasets import data as vega_data
 
 # =========================================================
-# CONFIG
+# PAGE CONFIG
 # =========================================================
-st.set_page_config(page_title="TB Global Burden — Quantités absolues", layout="wide")
+st.set_page_config(page_title="Global TB Burden — Interactive Data Story", layout="wide")
 alt.themes.enable("opaque")
-PALETTE = {"inc":"#2E86DE","mort":"#E74C3C","prev":"#F39C12","neutral":"#7F8C8D"}
 
-# Colonnes EXACTES du CSV (aucune modification disque)
+PALETTE = {
+    "inc":  "#2E86DE",
+    "mort": "#E74C3C",
+    "prev": "#F39C12",
+    "neutral": "#7F8C8D",
+}
+# WHO region categorical palette
+REGION_COLORS = {
+    "AFR": "#9B59B6",  # Africa
+    "AMR": "#27AE60",  # Americas
+    "EMR": "#E67E22",  # Eastern Mediterranean
+    "EUR": "#2980B9",  # Europe
+    "SEA": "#C0392B",  # South-East Asia
+    "WPR": "#16A085",  # Western Pacific
+}
+
+# =========================================================
+# CSV COLUMN MAP (exact names, we never rewrite the file)
+# =========================================================
 COL = {
     "country": "Country or territory name",
     "iso3": "ISO 3-character country/territory code",
@@ -22,30 +39,30 @@ COL = {
     "year": "Year",
     "pop": "Estimated total population number",
 
-    # ABSOLUES (on se base uniquement sur elles)
-    "prev_abs": "Estimated prevalence of TB (all forms)",
-    "prev_abs_lo": "Estimated prevalence of TB (all forms), low bound",
-    "prev_abs_hi": "Estimated prevalence of TB (all forms), high bound",
+    # Absolute quantities (used throughout)
+    "prev_abs":   "Estimated prevalence of TB (all forms)",
+    "prev_abs_lo":"Estimated prevalence of TB (all forms), low bound",
+    "prev_abs_hi":"Estimated prevalence of TB (all forms), high bound",
 
-    "deaths_abs": "Estimated number of deaths from TB (all forms, excluding HIV)",
-    "deaths_abs_lo": "Estimated number of deaths from TB (all forms, excluding HIV), low bound",
-    "deaths_abs_hi": "Estimated number of deaths from TB (all forms, excluding HIV), high bound",
+    "deaths_abs":   "Estimated number of deaths from TB (all forms, excluding HIV)",
+    "deaths_abs_lo":"Estimated number of deaths from TB (all forms, excluding HIV), low bound",
+    "deaths_abs_hi":"Estimated number of deaths from TB (all forms, excluding HIV), high bound",
 
-    "inc_abs": "Estimated number of incident cases (all forms)",
-    "inc_abs_lo": "Estimated number of incident cases (all forms), low bound",
-    "inc_abs_hi": "Estimated number of incident cases (all forms), high bound",
+    "inc_abs":   "Estimated number of incident cases (all forms)",
+    "inc_abs_lo":"Estimated number of incident cases (all forms), low bound",
+    "inc_abs_hi":"Estimated number of incident cases (all forms), high bound",
 
-    # TB/VIH absolu
-    "tbhiv_abs": "Estimated incidence of TB cases who are HIV-positive",
-    "tbhiv_abs_lo": "Estimated incidence of TB cases who are HIV-positive, low bound",
-    "tbhiv_abs_hi": "Estimated incidence of TB cases who are HIV-positive, high bound",
+    # Per-100k (for optional map study)
+    "prev_100k": "Estimated prevalence of TB (all forms) per 100 000 population",
+    "mort_100k": "Estimated mortality of TB cases (all forms, excluding HIV) per 100 000 population",
+    "inc_100k":  "Estimated incidence (all forms) per 100 000 population",
 
-    # Autres champs gardés tels quels (non utilisés pour les graphes principaux)
+    # Case detection
     "cdr_pct": "Case detection rate (all forms), percent",
 }
 
 # =========================================================
-# Normalisation noms pays (pour centroids)
+# COUNTRY NAME NORMALIZATION (for centroid matching)
 # =========================================================
 def normalize_country_name(name: str) -> str:
     if not isinstance(name, str): return name
@@ -69,10 +86,10 @@ def normalize_country_name(name: str) -> str:
     return fixes.get(n, n)
 
 # =========================================================
-# Centroïdes pays (lat, lon) — couverture large
+# COUNTRY CENTROIDS (lat, lon) — main coverage
 # =========================================================
 COUNTRY_CENTROIDS = {
-    # Amériques
+    # Americas
     "Canada":(61.07,-107.99), "United States":(39.78,-100.45), "Mexico":(23.63,-102.55),
     "Guatemala":(15.78,-90.23), "Honduras":(14.82,-86.64), "El Salvador":(13.79,-88.90),
     "Nicaragua":(12.83,-85.00), "Costa Rica":(9.75,-84.08), "Panama":(8.54,-80.78),
@@ -97,13 +114,13 @@ COUNTRY_CENTROIDS = {
     "Ukraine":(48.38,31.17), "Moldova":(47.20,28.47), "Lithuania":(55.34,23.90),
     "Latvia":(56.88,24.60), "Estonia":(58.67,25.00), "Russia":(61.52,105.32),
     "Turkey":(39.06,35.18),
-    # Afrique
+    # Africa
     "Morocco":(31.79,-7.09), "Algeria":(28.04,2.96), "Tunisia":(33.89,9.40),
-    "Libya":(27.04,18.01), "Egypt":(26.49,29.87),
-    "Mauritania":(20.26,-10.97), "Mali":(17.57,-3.99), "Senegal":(14.36,-14.47),
-    "Gambia":(13.45,-15.38), "Guinea-Bissau":(12.05,-14.67), "Guinea":(10.44,-9.31),
-    "Sierra Leone":(8.56,-11.78), "Liberia":(6.45,-9.31), "Ivory Coast":(7.64,-5.55),
-    "Ghana":(7.96,-1.02), "Togo":(8.53,0.82), "Benin":(9.32,2.31), "Burkina Faso":(12.24,-1.56),
+    "Libya":(27.04,18.01), "Egypt":(26.49,29.87), "Mauritania":(20.26,-10.97),
+    "Mali":(17.57,-3.99), "Senegal":(14.36,-14.47), "Gambia":(13.45,-15.38),
+    "Guinea-Bissau":(12.05,-14.67), "Guinea":(10.44,-9.31), "Sierra Leone":(8.56,-11.78),
+    "Liberia":(6.45,-9.31), "Ivory Coast":(7.64,-5.55), "Ghana":(7.96,-1.02),
+    "Togo":(8.53,0.82), "Benin":(9.32,2.31), "Burkina Faso":(12.24,-1.56),
     "Niger":(17.61,8.08), "Nigeria":(9.08,8.68), "Cameroon":(5.69,12.74), "Chad":(15.36,18.66),
     "Central African Republic":(6.61,20.94), "Republic of the Congo":(-0.66,15.56),
     "Democratic Republic of the Congo":(-2.88,23.66), "Gabon":(-0.59,11.79),
@@ -117,7 +134,7 @@ COUNTRY_CENTROIDS = {
     "Zambia":(-13.13,27.85), "Malawi":(-13.25,34.30), "Mozambique":(-17.27,35.53),
     "Madagascar":(-19.37,46.70), "Comoros":(-11.88,43.87), "Mauritius":(-20.25,57.55),
     "Seychelles":(-4.68,55.45),
-    # Moyen-Orient / Asie centrale
+    # Middle East / Central Asia
     "Israel":(31.20,34.86), "Lebanon":(33.92,35.89), "Syria":(34.80,38.98),
     "Jordan":(31.24,36.76), "Iraq":(33.22,43.68), "Saudi Arabia":(23.94,45.08),
     "Yemen":(15.55,48.52), "Oman":(20.59,56.09), "United Arab Emirates":(24.23,53.66),
@@ -126,7 +143,7 @@ COUNTRY_CENTROIDS = {
     "Azerbaijan":(40.35,47.70), "Armenia":(40.29,44.94), "Georgia":(42.32,43.37),
     "Kazakhstan":(48.16,67.30), "Uzbekistan":(41.38,64.57), "Turkmenistan":(39.10,59.37),
     "Kyrgyzstan":(41.46,74.56), "Tajikistan":(38.86,71.27),
-    # Asie du Sud / Est
+    # South & East Asia
     "India":(22.88,79.80), "Sri Lanka":(7.86,80.68), "Nepal":(28.39,84.12),
     "Bhutan":(27.41,90.43), "Bangladesh":(23.69,90.35), "Maldives":(3.67,73.54),
     "Myanmar":(19.75,96.10), "Thailand":(15.12,101.00), "Laos":(19.86,102.50),
@@ -135,7 +152,7 @@ COUNTRY_CENTROIDS = {
     "Brunei":(4.52,114.72), "East Timor":(-8.79,125.85),
     "China":(35.86,104.19), "Mongolia":(46.86,103.84), "Japan":(36.20,138.25),
     "South Korea":(36.50,127.98), "North Korea":(40.34,127.51), "Taiwan":(23.70,121.08),
-    # Océanie
+    # Oceania
     "Australia":(-25.27,133.77), "New Zealand":(-41.29,174.78),
     "Papua New Guinea":(-6.31,146.38), "Fiji":(-17.82,178.13), "Solomon Islands":(-9.23,160.14),
     "Vanuatu":(-15.38,166.96), "Samoa":(-13.76,-172.10), "Tonga":(-21.18,-175.20),
@@ -144,147 +161,284 @@ COUNTRY_CENTROIDS = {
 }
 
 # =========================================================
-# Chargement CSV (racine OU data/)
+# LOAD DATA (root or data/), compute cumulative
 # =========================================================
 @st.cache_data(show_spinner=True)
 def load_data():
-    candidates = ["TB_Burden_Country.csv", os.path.join("data","TB_Burden_Country.csv")]
+    candidates = ["TB_Burden_Country.csv", os.path.join("data", "TB_Burden_Country.csv")]
     path = next((p for p in candidates if os.path.exists(p)), None)
     if path is None:
-        st.error("CSV introuvable. Placez-le à la racine ou dans data/."); st.stop()
+        st.error("CSV not found. Place it at repository root or in data/.")
+        st.stop()
 
-    raw = pd.read_csv(path, sep=",")
+    raw = pd.read_csv(path)
+
     needed = list(COL.values())
-    miss = [c for c in needed if c not in raw.columns]
-    if miss:
-        st.error(f"Colonnes manquantes dans le CSV: {miss}"); st.stop()
+    missing = [c for c in needed if c not in raw.columns]
+    if missing:
+        st.error(f"Missing columns in CSV: {missing}")
+        st.stop()
 
     df = raw[needed].copy()
 
-    # Types
-    num_cols = [COL["year"], COL["pop"],
-                COL["prev_abs"], COL["prev_abs_lo"], COL["prev_abs_hi"],
-                COL["deaths_abs"], COL["deaths_abs_lo"], COL["deaths_abs_hi"],
-                COL["inc_abs"], COL["inc_abs_lo"], COL["inc_abs_hi"],
-                COL["tbhiv_abs"], COL["tbhiv_abs_lo"], COL["tbhiv_abs_hi"],
-                COL["cdr_pct"]]
-    for c in num_cols:
+    # numeric types
+    for c in [COL["year"], COL["pop"],
+              COL["prev_abs"], COL["prev_abs_lo"], COL["prev_abs_hi"],
+              COL["deaths_abs"], COL["deaths_abs_lo"], COL["deaths_abs_hi"],
+              COL["inc_abs"], COL["inc_abs_lo"], COL["inc_abs_hi"],
+              COL["prev_100k"], COL["mort_100k"], COL["inc_100k"],
+              COL["cdr_pct"]]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # Auxiliaires
-    df["country_raw"]  = df[COL["country"]]
+    # helpers
     df["country_norm"] = df[COL["country"]].apply(normalize_country_name)
+    df["region_code"] = df[COL["region"]].str.upper().str[:3]  # map to AFR/AMR/EMR/EUR/SEA/WPR if already coded
+    df["region_code"] = df["region_code"].replace({
+        "AFR":"AFR","AMR":"AMR","EMR":"EMR","EUR":"EUR","SEA":"SEA","WPR":"WPR"
+    })
 
-    # Plage années réelle
-    df = df.dropna(subset=[COL["year"], "country_norm"]).copy()
-    df = df[(df[COL["year"]] >= 1990) & (df[COL["year"]] <= 2025)]
+    # cumulative deaths per country
+    df = df.sort_values([COL["country"], COL["year"]]).copy()
+    df["cum_deaths_abs"] = df.groupby(COL["country"])[COL["deaths_abs"]].cumsum()
 
-    return df
+    # global aggregates per year
+    global_year = (
+        df.groupby(COL["year"])
+          .agg(inc_abs=("Estimated number of incident cases (all forms)", "sum"),
+               deaths_abs=("Estimated number of deaths from TB (all forms, excluding HIV)", "sum"),
+               prev_abs=("Estimated prevalence of TB (all forms)", "sum"))
+          .reset_index()
+          .rename(columns={COL["year"]:"year"})
+    )
+    global_year["cum_deaths_abs"] = global_year["deaths_abs"].cumsum()
 
-df = load_data()
-YEARS = sorted(df[COL["year"]].unique().tolist())
+    return df, global_year
+
+df, global_year = load_data()
+YEARS = sorted(df[COL["year"]].dropna().unique().tolist())
 LATEST = int(max(YEARS)) if YEARS else 2013
 
 WORLD = alt.topo_feature(vega_data.world_110m.url, "countries")
 
 def fmt_int(x):
-    try: return f"{int(round(float(x))):,}".replace(",", " ")
-    except: return "NA"
+    try:
+        return f"{int(round(float(x))):,}".replace(",", " ")
+    except Exception:
+        return "NA"
 
 # =========================================================
-# UI: 1 seul écran Carte + Zoom pays
+# HEADER — Context & narrative
 # =========================================================
-st.title("Fardeau mondial de la tuberculose — quantités absolues")
+st.title("Global Tuberculosis Burden — Interactive Data Story")
 
-c1, c2 = st.columns([2,1])
+st.markdown(
+"""
+### Why this analysis
+Tuberculosis remains one of the deadliest infectious diseases worldwide. The burden is **highly uneven**: a relatively small set of countries concentrates most incident cases and deaths.  
+This dashboard offers two complementary angles:
+- **Global view** to understand long-term trends and cumulative deaths.
+- **Country zoom** to explore a single country’s absolute counts over time.
+
+All figures exclude TB/HIV-specific split. Values come directly from WHO estimates.
+"""
+)
+
+# view selector
+view = st.selectbox("View", options=["Global view", "Country zoom"])
+
+# =========================================================
+# WORLD BUBBLE MAP (shared by both views)
+# =========================================================
+st.markdown("## World bubble map")
+
+c1, c2, c3 = st.columns([2, 1.2, 1.2])
 with c1:
-    year_sel = st.slider("Année", int(min(YEARS)), int(max(YEARS)), value=LATEST, step=1)
+    year_sel = st.slider("Year", int(min(YEARS)), int(max(YEARS)), value=LATEST, step=1)
 with c2:
-    metric_alias = st.selectbox(
-        "Métrique",
-        options=["Prévalence (personnes)","Incidence (cas)","Décès (personnes)","Incidence TB/VIH (personnes)"]
+    metric_choice = st.selectbox(
+        "Metric",
+        options=[
+            "Incidence (absolute)",
+            "Deaths (absolute)",
+            "Prevalence (absolute)",
+            "Incidence per 100k",
+            "Deaths per 100k",
+            "Prevalence per 100k",
+            "Case detection rate (%)",
+        ]
     )
+with c3:
+    st.caption("Bubble size reflects the selected metric. Bubble color indicates WHO region.")
 
-# Mapping métrique -> colonnes absolues et couleur
-if metric_alias.startswith("Prévalence"):
-    m_col, lo_col, hi_col, m_color = COL["prev_abs"], COL["prev_abs_lo"], COL["prev_abs_hi"], PALETTE["prev"]
-elif metric_alias.startswith("Décès"):
-    m_col, lo_col, hi_col, m_color = COL["deaths_abs"], COL["deaths_abs_lo"], COL["deaths_abs_hi"], PALETTE["mort"]
-elif metric_alias.startswith("Incidence TB/VIH"):
-    m_col, lo_col, hi_col, m_color = COL["tbhiv_abs"], COL["tbhiv_abs_lo"], COL["tbhiv_abs_hi"], "#8E44AD"
+# link metric to column and scaling
+if metric_choice == "Incidence (absolute)":
+    m_col, label, color = COL["inc_abs"], "Incidence (absolute)", PALETTE["inc"]
+elif metric_choice == "Deaths (absolute)":
+    m_col, label, color = COL["deaths_abs"], "Deaths (absolute)", PALETTE["mort"]
+elif metric_choice == "Prevalence (absolute)":
+    m_col, label, color = COL["prev_abs"], "Prevalence (absolute)", PALETTE["prev"]
+elif metric_choice == "Incidence per 100k":
+    m_col, label, color = COL["inc_100k"], "Incidence per 100k", PALETTE["inc"]
+elif metric_choice == "Deaths per 100k":
+    m_col, label, color = COL["mort_100k"], "Deaths per 100k", PALETTE["mort"]
+elif metric_choice == "Prevalence per 100k":
+    m_col, label, color = COL["prev_100k"], "Prevalence per 100k", PALETTE["prev"]
 else:
-    m_col, lo_col, hi_col, m_color = COL["inc_abs"], COL["inc_abs_lo"], COL["inc_abs_hi"], PALETTE["inc"]
+    m_col, label, color = COL["cdr_pct"], "Case detection rate (%)", "#8E44AD"
 
-# Sous-ensemble année + centroïdes
 show = df[df[COL["year"]] == year_sel].copy()
+# centroid lookup
 show["country_norm"] = show[COL["country"]].apply(normalize_country_name)
 show["lat"] = show["country_norm"].map(lambda x: COUNTRY_CENTROIDS.get(x, (np.nan, np.nan))[0])
 show["lon"] = show["country_norm"].map(lambda x: COUNTRY_CENTROIDS.get(x, (np.nan, np.nan))[1])
 show = show.dropna(subset=[m_col, "lat", "lon"])
 
-# Échelle de taille: quantiles robustes
-if not show.empty:
-    q10 = np.nanpercentile(show[m_col], 10)
-    q99 = np.nanpercentile(show[m_col], 99)
-else:
-    q10, q99 = 1, 10
-size_scale = alt.Scale(domain=[q10, q99], range=[30, 1800])
+# region color
+show["region_plot"] = show["region_code"].where(show["region_code"].isin(REGION_COLORS.keys()), "Other")
 
-# Fond gris
+# size scaling
+if m_col == COL["cdr_pct"]:
+    size_scale = alt.Scale(domain=[0, 100], range=[30, 1500])
+else:
+    if show.empty:
+        q10, q99 = 1, 10
+    else:
+        q10 = np.nanpercentile(show[m_col], 10)
+        q99 = np.nanpercentile(show[m_col], 99)
+        if q10 == q99:
+            q10, q99 = 0, q99 if q99 > 0 else 1
+    size_scale = alt.Scale(domain=[q10, q99], range=[30, 1800])
+
+# background
 base_map = alt.Chart(WORLD).mark_geoshape(
-    fill="#EEEEEE", stroke="white", strokeWidth=0.25
+    fill="#EEEEEE", stroke="white", strokeWidth=0.3
 ).project(type="equirectangular").properties(height=520)
 
-# Bulles absolues
-bubbles = alt.Chart(show).mark_circle(opacity=0.65, stroke="white", strokeWidth=0.5, color=m_color).encode(
-    longitude="lon:Q", latitude="lat:Q",
-    size=alt.Size(f"{m_col}:Q", title=metric_alias, scale=size_scale, legend=alt.Legend(orient="right")),
+# bubbles
+bubbles = alt.Chart(show).mark_circle(opacity=0.75, stroke="white", strokeWidth=0.6).encode(
+    longitude="lon:Q",
+    latitude="lat:Q",
+    size=alt.Size(f"{m_col}:Q", title=label, scale=size_scale),
+    color=alt.Color("region_plot:N",
+                    title="WHO Region",
+                    scale=alt.Scale(domain=list(REGION_COLORS.keys()),
+                                    range=[REGION_COLORS[k] for k in REGION_COLORS.keys()])),
     tooltip=[
-        alt.Tooltip(COL["country"], title="Pays"),
-        alt.Tooltip(m_col, title=metric_alias, format=","),
-        alt.Tooltip(lo_col, title="Borne basse", format=","),
-        alt.Tooltip(hi_col, title="Borne haute", format=","),
+        alt.Tooltip(COL["country"], title="Country"),
+        alt.Tooltip("region_plot:N", title="WHO region"),
+        alt.Tooltip(COL["pop"], title="Population", format=","),
+        alt.Tooltip(m_col, title=label, format=",.0f" if "absolute" in label or m_col==COL["cdr_pct"] else ".1f"),
+        alt.Tooltip(COL["deaths_abs"], title="Deaths (absolute)", format=","),
+        alt.Tooltip("cum_deaths_abs:Q", title="Cumulative deaths to year", format=",")
     ]
+).transform_calculate(
+    cum_deaths_abs=f"datum['{COL['deaths_abs']}']"  # replaced later when we filter; tooltip uses column name
 ).project(type="equirectangular").properties(height=520)
 
 st.altair_chart(base_map + bubbles, use_container_width=True)
 
-# Sélection pays + courbes absolues
-st.markdown("### Zoom pays")
-country = st.selectbox("Choisir un pays", options=sorted(df[COL["country"]].dropna().unique()))
-dpc = df[df[COL["country"]] == country].sort_values(COL["year"]).copy()
+# =========================================================
+# VIEWS
+# =========================================================
+if view == "Global view":
+    st.markdown("## Global time series and cumulative deaths")
 
-if dpc.empty:
-    st.info("Aucune donnée disponible pour ce pays.")
-else:
-    # Passage en format long sur les ABSOLUS uniquement
-    long = dpc.rename(columns={
-        COL["year"]: "Année",
-        COL["inc_abs"]: "Incidence (cas)",
-        COL["deaths_abs"]: "Décès (personnes)",
-        COL["prev_abs"]: "Prévalence (personnes)",
-        COL["tbhiv_abs"]: "Incidence TB/VIH (personnes)",
-    })[["Année","Incidence (cas)","Décès (personnes)","Prévalence (personnes)","Incidence TB/VIH (personnes)"]]
-    long = long.melt("Année", var_name="Métrique", value_name="Quantité")
+    # totals per year
+    gy = global_year.copy()
+    # lines
+    lines_df = gy.melt("year", value_vars=["inc_abs","deaths_abs","prev_abs"],
+                       var_name="Metric", value_name="Value").replace({
+        "inc_abs":"Incidence (absolute)",
+        "deaths_abs":"Deaths (absolute)",
+        "prev_abs":"Prevalence (absolute)"
+    })
+    color_map = alt.Scale(domain=["Incidence (absolute)","Deaths (absolute)","Prevalence (absolute)"],
+                          range=[PALETTE["inc"], PALETTE["mort"], PALETTE["prev"]])
 
-    color_map = alt.Scale(
-        domain=["Incidence (cas)","Décès (personnes)","Prévalence (personnes)","Incidence TB/VIH (personnes)"],
-        range=[PALETTE["inc"], PALETTE["mort"], PALETTE["prev"], "#8E44AD"]
+    ts = alt.Chart(lines_df).mark_line(point=True).encode(
+        x=alt.X("year:O", title="Year"),
+        y=alt.Y("Value:Q", title="People / cases"),
+        color=alt.Color("Metric:N", scale=color_map),
+        tooltip=["year","Metric", alt.Tooltip("Value:Q", format=",")]
+    ).properties(height=320)
+
+    cum = alt.Chart(gy).mark_area(opacity=0.2, color=PALETTE["mort"]).encode(
+        x=alt.X("year:O", title="Year"),
+        y=alt.Y("cum_deaths_abs:Q", title="Cumulative deaths (absolute)"),
+        tooltip=["year", alt.Tooltip("cum_deaths_abs:Q", format=",")]
+    ).properties(height=180)
+
+    st.altair_chart(ts, use_container_width=True)
+    st.altair_chart(cum, use_container_width=True)
+
+    st.markdown(
+        """
+**Reading notes.** Absolute incidence dominates prevalence, which is expected for a disease with long duration in many settings.  
+Cumulative deaths grow steadily across the full period, highlighting the persistent fatal burden.
+        """
     )
 
-    line = alt.Chart(long).mark_line(point=True).encode(
-        x=alt.X("Année:O"),
-        y=alt.Y("Quantité:Q", title="Nombre de personnes / cas"),
-        color=alt.Color("Métrique:N", scale=color_map),
-        tooltip=["Année","Métrique", alt.Tooltip("Quantité:Q", format=",")]
+else:
+    st.markdown("## Country zoom")
+    country = st.selectbox("Select a country", options=sorted(df[COL["country"]].dropna().unique()))
+    dpc = df[df[COL["country"]] == country].sort_values(COL["year"]).copy()
+
+    # time series of absolute counts
+    long = dpc.rename(columns={
+        COL["year"]:"Year",
+        COL["inc_abs"]:"Incidence (absolute)",
+        COL["deaths_abs"]:"Deaths (absolute)",
+        COL["prev_abs"]:"Prevalence (absolute)",
+    })[["Year","Incidence (absolute)","Deaths (absolute)","Prevalence (absolute)"]].melt(
+        "Year", var_name="Metric", value_name="Value"
+    )
+
+    color_map = alt.Scale(domain=["Incidence (absolute)","Deaths (absolute)","Prevalence (absolute)"],
+                          range=[PALETTE["inc"], PALETTE["mort"], PALETTE["prev"]])
+
+    ts = alt.Chart(long).mark_line(point=True).encode(
+        x=alt.X("Year:O"),
+        y=alt.Y("Value:Q", title="People / cases"),
+        color=alt.Color("Metric:N", scale=color_map),
+        tooltip=["Year","Metric", alt.Tooltip("Value:Q", format=",")]
     ).properties(height=340)
 
-    st.altair_chart(line, use_container_width=True)
+    # cumulative deaths for this country
+    dpc_cum = dpc[[COL["year"], COL["deaths_abs"]]].rename(columns={COL["year"]:"Year", COL["deaths_abs"]:"Deaths"})
+    dpc_cum["Cumulative deaths"] = dpc_cum["Deaths"].cumsum()
 
-    # Tuiles dernière année
+    cum = alt.Chart(dpc_cum).mark_area(opacity=0.2, color=PALETTE["mort"]).encode(
+        x=alt.X("Year:O"),
+        y=alt.Y("Cumulative deaths:Q", title="Cumulative deaths (absolute)"),
+        tooltip=["Year", alt.Tooltip("Cumulative deaths:Q", format=",")]
+    ).properties(height=200)
+
+    st.altair_chart(ts, use_container_width=True)
+    st.altair_chart(cum, use_container_width=True)
+
+    # Latest tiles
     last = dpc.iloc[-1]
-    cA,cB,cC,cD = st.columns(4)
-    cA.metric("Incidence (cas)", fmt_int(last[COL["inc_abs"]]))
-    cB.metric("Décès (pers.)", fmt_int(last[COL["deaths_abs"]]))
-    cC.metric("Prévalence (pers.)", fmt_int(last[COL["prev_abs"]]))
-    cD.metric("TB/VIH (pers.)", fmt_int(last[COL["tbhiv_abs"]]))
+    cA, cB, cC, cD = st.columns(4)
+    cA.metric("Incidence (absolute)", fmt_int(last[COL["inc_abs"]]))
+    cB.metric("Deaths (absolute)", fmt_int(last[COL["deaths_abs"]]))
+    cC.metric("Prevalence (absolute)", fmt_int(last[COL["prev_abs"]]))
+    cD.metric("Case detection rate (%)", f"{last[COL['cdr_pct']]:.0f}" if not pd.isna(last[COL["cdr_pct"]]) else "NA")
+
+# =========================================================
+# CONCLUSION & PREVENTION
+# =========================================================
+st.markdown("---")
+st.markdown(
+"""
+### Key conclusions
+1. The TB burden is **highly concentrated** in a limited number of countries and WHO regions.  
+2. Despite progress in some places, **absolute deaths keep accumulating**, underscoring the long-term fatal burden.  
+3. **Case detection** varies widely. Countries with sustained improvements in detection typically achieve faster declines in incidence and deaths.
+
+### Public health implications and prevention
+- **Earlier detection and treatment** save lives and reduce transmission.  
+- **Stable financing** targeting high-burden settings is essential.  
+- **Integrated primary care** with TB screening, diagnostics, and patient support improves adherence and outcomes.  
+- **Social protection and stigma reduction** help patients complete treatment and return to care when needed.
+"""
+)
