@@ -490,5 +490,9 @@ st.markdown(
 - WHO Data Portal: https://www.who.int/data/
 - The Site Where We Recover The Dataset: https://www.tableau.com/learn/articles/free-public-data-sets
 - The Associated Study: https://iris.who.int/server/api/core/bitstreams/07cb19ac-9dbe-483a-a7e1-b23505b0e081/content
+- Last updates on the disease:
+    - https://www.who.int/southeastasia/health-topics/tuberculosis
+    - https://www.afro.who.int/health-topics/tuberculosis-tb
+    - https://www.who.int/fr/news-room/fact-sheets/detail/tuberculosis
 """
 )
