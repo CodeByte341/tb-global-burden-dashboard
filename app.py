@@ -240,7 +240,7 @@ def fmt_int(x):
 # =========================================================
 # HEADER — Title / Subtitle / Authors
 # =========================================================
-st.title("Global Tuberculosis Burden — Analytical Dashboard")
+st.title("Case study: analytical dashboard of the global tuberculosis burden")
 st.markdown(
     "<div style='color:#555;font-size:16px;margin-top:-6px;'>"
     "Data Mining & Data Visualization coursework. Team: "
