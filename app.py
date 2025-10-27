@@ -30,32 +30,33 @@ COL = {
 
 @st.cache_data(show_spinner=False)
 def load_data():
-    path = os.path.join("data", "TB_Burden_Country.csv")
-    if not os.path.exists(path):
-        st.error("Placez le fichier dans data/TB_Burden_Country.csv")
+    # essaie d'abord à la racine, puis dans data/
+    candidates = [
+        "TB_Burden_Country.csv",
+        os.path.join("data", "TB_Burden_Country.csv"),
+    ]
+    path = next((p for p in candidates if os.path.exists(p)), None)
+
+    if path is None:
+        st.error("Fichier CSV introuvable. Placez-le à la racine (TB_Burden_Country.csv) "
+                 "ou dans data/TB_Burden_Country.csv.")
         st.stop()
 
     raw = pd.read_csv(path)
-    # Sélectionne uniquement les colonnes utiles, en gardant les noms d’origine
+
+    # conservez ici votre logique existante: sélection des colonnes, conversions, dérivés
     df = raw[list(COL.values())].copy()
-
-    # Construit des vues aliasées en mémoire (sans renommer dans le fichier)
-    def col(k): return COL[k]
-
-    # Types
     for k in ["year","pop","prev100k","mort100k","morthiv100k","inc100k","hiv_share_pct","cdr_pct"]:
-        df[col(k)] = pd.to_numeric(df[col(k)], errors="coerce")
+        df[COL[k]] = pd.to_numeric(df[COL[k]], errors="coerce")
 
-    # Dérivés « absolus » (nombre de cas/décès) à partir des taux pour 100k
-    df["prev_abs"] = (df[col("prev100k")] * df[col("pop")] / 1e5).round()
-    df["inc_abs"]  = (df[col("inc100k")]  * df[col("pop")] / 1e5).round()
-    df["mort_abs"] = (df[col("mort100k")] * df[col("pop")] / 1e5).round()
-    df["mort_hiv_abs"] = (df[col("morthiv100k")] * df[col("pop")] / 1e5).round()
+    df["prev_abs"] = (df[COL["prev100k"]] * df[COL["pop"]] / 1e5).round()
+    df["inc_abs"]  = (df[COL["inc100k"]]  * df[COL["pop"]] / 1e5).round()
+    df["mort_abs"] = (df[COL["mort100k"]] * df[COL["pop"]] / 1e5).round()
+    df["mort_hiv_abs"] = (df[COL["morthiv100k"]] * df[COL["pop"]] / 1e5).round()
 
-    # Nettoyage simple
-    df = df.dropna(subset=[col("country"), col("year")]).copy()
-    df[col("iso3")] = df[col("iso3")].astype(str).str.upper().str.strip()
-    df = df[(df[col("year")] >= 2000) & (df[col("year")] <= 2025)]
+    df = df.dropna(subset=[COL["country"], COL["year"]]).copy()
+    df[COL["iso3"]] = df[COL["iso3"]].astype(str).str.upper().str.strip()
+    df = df[(df[COL["year"]] >= 2000) & (df[COL["year"]] <= 2025)]
 
     return df
 
