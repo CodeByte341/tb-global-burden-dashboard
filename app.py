@@ -244,7 +244,7 @@ st.title("Global Tuberculosis Burden — Analytical Dashboard")
 st.markdown(
     "<div style='color:#555;font-size:16px;margin-top:-6px;'>"
     "Data Mining & Data Visualization coursework — Team: "
-    "<b>Romain Gille</b>, <b>Solenn Lorient</b>, <b>Flavie Perrier</b>, <b>Axel Fontanier</b>"
+    "<b>Axel Fontanier</b>, <b>Romain Gille</b>, <b>Solenn Lorient</b>, <b>Flavie Perrier</b>"
     "</div>",
     unsafe_allow_html=True
 )
@@ -501,7 +501,8 @@ st.markdown("---")
 st.markdown(
 """
 **Sources.** World Health Organization (WHO) data.  
-- WHO Data Portal: https://www.who.int/data/  
-- Public datasets list: https://www.tableau.com/learn/articles/free-public-data-sets
+- WHO Data Portal: https://www.who.int/data/
+- The Site Where We Recover The Dataset: https://www.tableau.com/learn/articles/free-public-data-sets
+- The Associated Study: https://iris.who.int/server/api/core/bitstreams/07cb19ac-9dbe-483a-a7e1-b23505b0e081/content
 """
 )
