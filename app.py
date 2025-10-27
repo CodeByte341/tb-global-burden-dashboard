@@ -10,7 +10,10 @@ from vega_datasets import data as vega_data
 # =========================================================
 # PAGE CONFIG
 # =========================================================
-st.set_page_config(page_title="Global Tuberculosis Burden — Interactive Data Story", layout="wide")
+st.set_page_config(
+    page_title="Global Tuberculosis Burden — Analytical Dashboard",
+    layout="wide"
+)
 alt.themes.enable("opaque")
 
 PALETTE = {
@@ -27,6 +30,15 @@ REGION_COLORS = {
     "EUR": "#2980B9",  # Europe
     "SEA": "#C0392B",  # South-East Asia
     "WPR": "#16A085",  # Western Pacific
+}
+
+REGION_FULL = {
+    "AFR": "Africa",
+    "AMR": "Americas",
+    "EMR": "Eastern Mediterranean",
+    "EUR": "Europe",
+    "SEA": "South-East Asia",
+    "WPR": "Western Pacific"
 }
 
 # =========================================================
@@ -52,12 +64,12 @@ COL = {
     "inc_abs_lo":"Estimated number of incident cases (all forms), low bound",
     "inc_abs_hi":"Estimated number of incident cases (all forms), high bound",
 
-    # Per-100k (for optional map study)
+    # Per-100k (for map options)
     "prev_100k": "Estimated prevalence of TB (all forms) per 100 000 population",
     "mort_100k": "Estimated mortality of TB cases (all forms, excluding HIV) per 100 000 population",
     "inc_100k":  "Estimated incidence (all forms) per 100 000 population",
 
-    # We keep case detection in data for tiles, but not on the map
+    # Optional tiles (not on map)
     "cdr_pct": "Case detection rate (all forms), percent",
 }
 
@@ -192,7 +204,6 @@ def load_data():
 
     # helpers
     df["country_norm"] = df[COL["country"]].apply(normalize_country_name)
-    # region key for coloring (AFR/AMR/… if dataset uses those codes)
     df["region_key"] = df[COL["region"]].astype(str).str.upper().str[:3]
     df["region_key"] = df["region_key"].where(df["region_key"].isin(REGION_COLORS.keys()), "Other")
 
@@ -215,7 +226,8 @@ def load_data():
 
 df, global_year = load_data()
 YEARS = sorted(df[COL["year"]].dropna().unique().tolist())
-LATEST = int(max(YEARS)) if YEARS else 2013
+EARLY = int(min(YEARS)) if YEARS else None
+LATEST = int(max(YEARS)) if YEARS else None
 
 WORLD = alt.topo_feature(vega_data.world_110m.url, "countries")
 
@@ -226,40 +238,33 @@ def fmt_int(x):
         return "NA"
 
 # =========================================================
-# PROFESSIONAL CONTEXT (EN)
+# HEADER — Title / Subtitle / Authors
 # =========================================================
-st.title("Global Tuberculosis Burden — Interactive Data Story")
+st.title("Global Tuberculosis Burden — Analytical Dashboard")
+st.markdown(
+    "<div style='color:#555;font-size:16px;margin-top:-6px;'>"
+    "Data Mining & Data Visualization coursework — Team: "
+    "<b>Romain Gille</b>, <b>Solenn Lorient</b>, <b>Flavie Perrier</b>, <b>Axel Fontanier</b>"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 st.markdown(
 """
-**Context.** Tuberculosis (TB) is an infectious disease caused by *Mycobacterium tuberculosis*, mostly affecting the lungs. 
-It spreads through the air, and untreated cases can be fatal. The World Health Organization (WHO) provides country estimates 
-for TB **incidence**, **deaths**, and **prevalence**.
+**Context.** Tuberculosis (TB) is an infectious disease caused by *Mycobacterium tuberculosis*. It predominantly affects the lungs and spreads through airborne transmission. Untreated cases may be fatal.  
+**Detection and treatment.** Diagnosis combines clinical assessment and microbiological confirmation (sputum microscopy, rapid molecular tests, culture where available) together with radiography when indicated. Treatment relies on standardized multi-drug regimens for drug-susceptible TB, and longer specialized regimens for drug-resistant TB. Early case-finding and treatment completion are essential to reduce transmission and deaths.
 
-**How TB is detected and treated.** Diagnosis typically combines clinical evaluation with microbiological confirmation 
-(sputum microscopy, molecular testing such as Xpert MTB/RIF, culture where available), and chest imaging when indicated. 
-Treatment relies on standardized multi-drug regimens for drug-susceptible TB, and longer, specialized regimens for drug-resistant TB. 
-Early detection and treatment completion are essential to reduce transmission and mortality.
-
-**What this dashboard shows.** Use the controls to explore:
-- A **world bubble map** where bubble **size** represents the selected metric (absolute counts or per-100k) 
-  and bubble **color** encodes the **Region**.  
-- A **Global view** with yearly totals and **cumulative deaths**.  
-- A **Country zoom** to inspect a single country’s time series, with **cumulative deaths**.
-
-**Sources.** World Health Organization data: WHO Data Portal and the public data reference list.  
-Links: https://www.who.int/data/ and https://www.tableau.com/learn/articles/free-public-data-sets
+**How to read this dashboard.** Use the controls to:
+- Explore the **world bubble map**: bubble **size** equals the selected metric (absolute counts or per-100k), bubble **color** encodes the **Region**.
+- Switch between **Global view** and **Country zoom**. Both views include **cumulative deaths**.
 """
 )
 
 # =========================================================
-# VIEW SELECTOR
+# VIEW SELECTOR + MAP CONTROLS
 # =========================================================
 view = st.selectbox("View", options=["Global view", "Country zoom"])
 
-# =========================================================
-# MAP CONTROLS (Country dropdown appears inline in Country zoom)
-# =========================================================
 if view == "Global view":
     c1, c2, c3 = st.columns([2, 1.6, 1])
 else:
@@ -385,14 +390,6 @@ if view == "Global view":
     st.altair_chart(ts, use_container_width=True)
     st.altair_chart(cum, use_container_width=True)
 
-    st.markdown(
-        """
-**Interpretation.** Annual incidence remains higher than annual deaths and prevalence, which aligns with TB’s 
-transmissible nature and long disease duration in some settings. Cumulative deaths increase steadily, emphasizing the 
-persistent fatal burden over time.
-        """
-    )
-
 else:
     st.markdown("### Country time series and cumulative deaths")
     dpc = df[df[COL["country"]] == country_sel].sort_values(COL["year"]).copy()
@@ -437,7 +434,68 @@ else:
     cD.metric("Case detection rate (%)", f"{last[COL['cdr_pct']]:.0f}" if not pd.isna(last[COL["cdr_pct"]]) else "NA")
 
 # =========================================================
-# FOOTER: Sources
+# AUTOMATED SYNTHESIS — Which regions are most affected?
+# =========================================================
+st.markdown("---")
+st.markdown("### Analytical synthesis: where is the burden highest, and how is it changing?")
+
+def regional_summary(df_in, metric_abs_col, metric_name):
+    """Return ranking and shares by region for earliest and latest year."""
+    d = df_in.dropna(subset=[COL["year"], "region_key", metric_abs_col]).copy()
+    early, late = int(d[COL["year"]].min()), int(d[COL["year"]].max())
+
+    def agg_year(y):
+        g = (d[d[COL["year"]]==y]
+             .groupby("region_key")[metric_abs_col].sum()
+             .reset_index()
+             .sort_values(metric_abs_col, ascending=False))
+        total = g[metric_abs_col].sum()
+        g["share"] = g[metric_abs_col] / total * 100 if total > 0 else 0
+        return g, total
+
+    g_early, tot_early = agg_year(early)
+    g_late, tot_late   = agg_year(late)
+
+    # Top regions by late year
+    top_late = g_late.head(3).copy()
+    top_late["RegionFull"] = top_late["region_key"].map(REGION_FULL).fillna(top_late["region_key"])
+
+    # Variation of shares for these top late regions since early year
+    merged = top_late.merge(
+        g_early[["region_key","share"]].rename(columns={"share":"share_early"}),
+        on="region_key", how="left"
+    ).fillna({"share_early":0})
+    merged["delta_share"] = merged["share"] - merged["share_early"]
+
+    # Text blocks
+    lines = []
+    lines.append(f"• **{metric_name} — {late}**: total = **{fmt_int(tot_late)}**.")
+    for _, r in merged.iterrows():
+        lines.append(
+            f"  – {r['RegionFull']}: **{r['share']:.1f}%** of {metric_name} "
+            f"(change vs {early}: {'+' if r['delta_share']>=0 else ''}{r['delta_share']:.1f} pp)."
+        )
+    return early, late, "\n".join(lines)
+
+e1, l1, txt1 = regional_summary(df, COL["inc_abs"], "Incidence (absolute)")
+e2, l2, txt2 = regional_summary(df, COL["deaths_abs"], "Deaths (absolute)")
+e3, l3, txt3 = regional_summary(df, COL["prev_abs"], "Prevalence (absolute)")
+
+st.markdown(
+    f"""
+**Key messages.**  
+{txt1}  
+{txt2}  
+{txt3}  
+
+Overall, regions with the largest absolute incidence also concentrate the majority of deaths, although the relative shares can shift over time. 
+Observed changes reflect both epidemiological dynamics and population growth. Interventions that consistently improve early diagnosis and treatment completion
+are associated with faster reductions in incidence and mortality.
+"""
+)
+
+# =========================================================
+# SOURCES (single location)
 # =========================================================
 st.markdown("---")
 st.markdown(
