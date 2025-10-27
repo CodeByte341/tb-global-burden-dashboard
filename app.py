@@ -11,7 +11,7 @@ from vega_datasets import data as vega_data
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="Global Tuberculosis Burden — Analytical Dashboard",
+    page_title="Case study: analytical dashboard of the global tuberculosis burden",
     layout="wide"
 )
 alt.themes.enable("opaque")
@@ -243,7 +243,7 @@ def fmt_int(x):
 st.title("Global Tuberculosis Burden — Analytical Dashboard")
 st.markdown(
     "<div style='color:#555;font-size:16px;margin-top:-6px;'>"
-    "Data Mining & Data Visualization coursework — Team: "
+    "Data Mining & Data Visualization coursework. Team: "
     "<b>Axel Fontanier</b>, <b>Romain Gille</b>, <b>Solenn Lorient</b>, <b>Flavie Perrier</b>"
     "</div>",
     unsafe_allow_html=True
@@ -452,21 +452,18 @@ st.markdown("---")
 st.markdown("### Overall synthesis")
 
 st.markdown(
-"""
-**Where the burden concentrates.** In most years of global reporting, a **large share of the absolute TB burden** is concentrated in a limited number of countries across **South-East Asia** and parts of **Africa**, with comparatively **lower levels** observed in much of **Europe** and the **Americas**. This pattern reflects both **population size** and **underlying epidemiology**.
+f"""
+**Study window (1990–2013).** Within this period, the **highest absolute TB burden** concentrates in parts of **South-East Asia** and **Africa**, with comparatively lower levels across much of **Europe** and the **Americas**. This pattern reflects both **population size** and **underlying epidemiology**. Using **absolute** metrics highlights where the global workload and deaths are concentrated; using **per-100k** reveals where **risk intensity** is highest after adjusting for population.
 
-**Absolute vs per-100k perspectives.** Countries with very large populations can dominate **absolute** incidence and deaths even when their **per-100k** rates are moderate. Conversely, smaller countries may exhibit high **per-100k** rates without contributing as much to the global **absolute** totals. Using both lenses together prevents misleading conclusions.
+**Regional perspective, then and now.** The **WHO South-East Asia Region** bears **nearly half** of the global TB disease burden and, in recent reporting, accounted for **more than 45% of annual TB incidence**, with **> 4.8 million people** falling ill and **> 600 000 deaths (HIV-negative)** in **2022** alone, which is **more than half of global TB deaths**. This underscores why large shares of the global burden appear in South-East Asia even when country-specific per-100k rates vary. :contentReference[oaicite:0]{index=0}
 
-**Why some places are less affected.** Lower TB burden typically aligns with a combination of factors:  
-- **Earlier detection** and rapid **access to effective diagnostics** (including molecular tests),  
-- Strong **treatment programs** with high completion rates and patient support,  
-- **Socio-economic conditions** that reduce transmission risk (housing, nutrition, working conditions),  
-- Robust **primary care** and **infection-control** standards, and  
-- Childhood **BCG vaccination**, which helps protect against severe forms in children, even though it offers **limited protection** against pulmonary TB in adults.
+In the **WHO African Region**, the **fatal toll remains substantial**. WHO notes that **over 33% of TB deaths** occur in the African Region, reflecting persistent challenges in timely diagnosis, treatment completion, and the intersection with comorbidities and socio-economic determinants. :contentReference[oaicite:1]{index=1}
 
-**Why some places remain highly affected.** Persistent burden is often associated with **delayed diagnosis**, **treatment interruptions**, **health-system constraints**, **poverty and crowding**, **co-morbidities** (including HIV and diabetes), and the presence of **drug-resistant TB**. These drivers can sustain transmission and increase mortality despite progress elsewhere.
+**Current situation (outside the 1990–2013 study window).** According to the latest WHO fact sheet, **an estimated 10.8 million** people fell ill with TB and **1.25 million** died in **2023** (including **161 000** among people with HIV). TB has likely returned to being the **top cause of death from a single infectious agent** after COVID-19 dominated during the previous three years. These figures confirm that, despite progress, TB remains a leading global killer requiring sustained investment. :contentReference[oaicite:2]{index=2}
 
-**Programmatic implication.** Sustainable gains come from pairing **population-level prevention** and **social protection** with **high-quality case-finding** and **treatment completion**. Monitoring **absolute counts** guides planning and logistics, while **per-100k** indicators support benchmarking, prioritization, and evaluation of equitable progress across regions and countries.
+**Why some places are less affected.** Lower burden often aligns with **earlier detection** (rapid molecular tests), **high treatment completion**, **infection-control standards**, **robust primary care**, improved **living and working conditions**, and **childhood BCG vaccination** that protects against severe forms in children, while offering limited protection against adult pulmonary TB. :contentReference[oaicite:3]{index=3}
+
+**Programmatic implication.** For policy and planning, track **absolute counts** to size resources and logistics, and use **per-100k rates** to **benchmark** performance and equity across populations. Enduring gains require sustained financing for **case-finding, rapid diagnostics, effective treatment (including for drug-resistant TB), social protection**, and strong primary care to prevent diagnostic delay and treatment interruption.
 """
 )
 
